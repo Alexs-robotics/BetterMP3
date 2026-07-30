@@ -129,7 +129,7 @@ mp3_player/
   altrimenti la cache salta i file non modificati su disco e continua
   a mostrare i vecchi valori.
 
-## Nota legale importante
+## Nota legale
 
 La funzione di download da YouTube va usata solo per contenuti che hai
 il diritto di scaricare (materiale royalty-free, tuoi caricamenti,
