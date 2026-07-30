@@ -48,7 +48,7 @@ possibilità di riattivazione. Last.fm offre API equivalenti
    soggetta a errori di installazione dei pacchetti su Windows.
 2. Installa [VLC media player](https://www.videolan.org/vlc/) (64 bit,
    deve corrispondere all'architettura di Python — quasi certamente
-   64 bit) — serve per le DLL `libvlc` usate dal motore di riproduzione.
+   64 bit), serve per le DLL `libvlc` usate dal motore di riproduzione.
 3. Installa **ffmpeg** e assicurati che `ffmpeg.exe` sia nel PATH di
    sistema (serve a yt-dlp per convertire/tagliare l'audio):
    ```
@@ -129,7 +129,7 @@ mp3_player/
   altrimenti la cache salta i file non modificati su disco e continua
   a mostrare i vecchi valori.
 
-## Nota legale importante
+## Nota legale
 
 La funzione di download da YouTube va usata solo per contenuti che hai
 il diritto di scaricare (materiale royalty-free, tuoi caricamenti,
