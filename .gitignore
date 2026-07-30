@@ -1,0 +1,28 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+venv/
+env/
+.venv/
+
+# --- PyInstaller ---
+build/
+dist/
+*.spec
+
+# --- Dati generati dall'app (non vanno versionati) ---
+library.db
+downloads/
+preview_cache/
+dist/
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# --- Chiavi/credenziali: non committare mai la tua API key reale ---
+# Se in futuro sposti LASTFM_API_KEY in un file .env, aggiungilo qui:
+.env
