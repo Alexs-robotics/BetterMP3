@@ -16,6 +16,7 @@ from typing import Callable, List, Optional
 
 import vlc
 
+import threading
 
 class PlaybackEngine:
     def __init__(self) -> None:
@@ -41,9 +42,9 @@ class PlaybackEngine:
     def _handle_end_reached(self, _event) -> None:
         # Eseguito su un thread di VLC: passa al brano successivo se c'è.
         if self._current_index + 1 < len(self._playlist):
-            self.next()
+            threading.Timer(0.1, self.next).start()
         elif self._on_playback_ended:
-            self._on_playback_ended()
+            threading.Timer(0.1, self._on_playback_ended).start()
 
     # -- Gestione playlist -------------------------------------------------
     def load_playlist(self, paths: List[str], start_index: int = 0) -> None:

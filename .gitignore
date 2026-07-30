@@ -7,7 +7,7 @@ env/
 .venv/
 
 # --- PyInstaller ---
-build/
+build/  
 dist/
 *.spec
 
