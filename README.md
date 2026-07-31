@@ -1,8 +1,6 @@
-# MP3 Player — Windows Desktop App
+# BetterMP3
 
-Native desktop app (not a webapp) for Windows, written in Python with
-a Qt GUI (PySide6, dark black/purple theme), packaged as a `.exe` via
-PyInstaller.
+![alt text](https://github.com/Alexs-robotics/BetterMP3/blob/main/GUIPreview.png)
 
 ## Features
 
@@ -27,8 +25,7 @@ PyInstaller.
 - **Advanced playback controls**: play/pause, previous/next track,
   adjustable speed (0.75x–2x), a draggable seek bar to jump to any
   point in the track, volume control.
-- **Dark black/purple theme** applied across the whole interface.
-
+  
 ## Why Last.fm instead of Spotify?
 
 The project was originally meant to use Spotify's "Recommendations"
