@@ -15,7 +15,15 @@ REM   - ffmpeg.exe raggiungibile nel PATH (richiesto da yt-dlp per
 REM     estrarre/convertire l'audio in mp3).
 REM ============================================================
 
-pyinstaller --noconfirm --windowed --onefile ^
+REM Rimuove eventuali artefatti di build precedenti (cartelle build/dist e
+REM il file .spec generato). Senza questo passaggio, PyInstaller a volte
+REM riusa la cache di una build precedente e l'exe risultante non riflette
+REM le modifiche più recenti al codice, anche se la build sembra riuscita.
+if exist build rmdir /s /q build
+if exist dist rmdir /s /q dist
+if exist MP3Player.spec del /q MP3Player.spec
+
+pyinstaller --noconfirm --clean --windowed --onefile ^
     --name "MP3Player" ^
     --add-binary "C:\Program Files\VideoLAN\VLC\libvlc.dll;." ^
     --add-binary "C:\Program Files\VideoLAN\VLC\libvlccore.dll;." ^

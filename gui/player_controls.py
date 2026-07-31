@@ -41,10 +41,10 @@ class PlayerControls(QWidget):
         self.engine = engine
         self._seeking = False
 
-        self.now_playing_label = QLabel("Nessun brano in riproduzione")
+        self.now_playing_label = QLabel("No track playing")
         self.now_playing_label.setStyleSheet("font-weight: 600; font-size: 14px;")
 
-        # --- Barra di avanzamento con tempo trascorso/totale ---
+        # --- Seek bar with elapsed/total time ---
         self.elapsed_label = QLabel("00:00")
         self.total_label = QLabel("00:00")
         self.seek_slider = QSlider(Qt.Horizontal)
@@ -57,7 +57,7 @@ class PlayerControls(QWidget):
         seek_row.addWidget(self.seek_slider)
         seek_row.addWidget(self.total_label)
 
-        # --- Pulsanti di trasporto ---
+        # --- Transport buttons ---
         self.prev_button = QPushButton("⏮")
         self.play_pause_button = QPushButton("▶")
         self.next_button = QPushButton("⏭")
@@ -68,7 +68,7 @@ class PlayerControls(QWidget):
         self.play_pause_button.clicked.connect(self._on_play_pause)
         self.next_button.clicked.connect(self._on_next)
 
-        # --- Velocità di riproduzione ---
+        # --- Playback speed ---
         self.speed_combo = QComboBox()
         self.speed_combo.addItems(["0.75x", "1x", "1.25x", "1.5x", "2x"])
         self.speed_combo.setCurrentText("1x")
@@ -87,7 +87,7 @@ class PlayerControls(QWidget):
         transport_row.addWidget(self.play_pause_button)
         transport_row.addWidget(self.next_button)
         transport_row.addStretch()
-        transport_row.addWidget(QLabel("Velocità:"))
+        transport_row.addWidget(QLabel("Speed:"))
         transport_row.addWidget(self.speed_combo)
         transport_row.addSpacing(20)
         transport_row.addWidget(QLabel("Volume:"))

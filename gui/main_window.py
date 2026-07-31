@@ -1,11 +1,11 @@
 """
 main_window.py
 ----------------
-Finestra principale. Mette insieme:
-  - la scansione della libreria (cartella Music di Windows)
-  - la vista album/brani (album_view.py)
-  - i controlli di riproduzione (player_controls.py)
-  - il pannello dei consigli (recommendations_panel.py)
+Main window. Ties together:
+  - library scanning (Windows Music folder)
+  - the album/track view (album_view.py)
+  - playback controls (player_controls.py)
+  - the recommendations panel (recommendations_panel.py)
 """
 
 import os
@@ -45,26 +45,26 @@ class MainWindow(QMainWindow):
             preview_engine=PlaybackEngine(), main_engine=self.engine
         )
 
-        self.rescan_button = QPushButton("Ri-scansiona cartella Music")
+        self.rescan_button = QPushButton("Rescan Music folder")
         self.rescan_button.clicked.connect(self._rescan_library)
 
-        self.force_rescan_button = QPushButton("Rilettura completa (ignora cache)")
+        self.force_rescan_button = QPushButton("Full re-read (ignore cache)")
         self.force_rescan_button.setToolTip(
-            "Rilegge da zero i tag di TUTTI i file, anche quelli non modificati.\n"
-            "Usalo se hai aggiornato l'app e alcuni titoli/numeri traccia risultano ancora sbagliati."
+            "Re-reads the tags of ALL files from scratch, even unmodified ones.\n"
+            "Use this if you updated the app and some titles/track numbers still look wrong."
         )
         self.force_rescan_button.clicked.connect(self._force_full_rescan)
 
-        self.choose_folder_button = QPushButton("Scegli un'altra cartella musicale...")
+        self.choose_folder_button = QPushButton("Choose a different music folder...")
         self.choose_folder_button.clicked.connect(self._choose_folder)
 
-        # -- Collegamento dei segnali --
+        # -- Signal connections --
         self.album_view.play_album_requested.connect(self._play_album)
         self.album_view.track_selected.connect(self.recommendations_panel.refresh_for_track)
         self.player_controls.play_pause_clicked.connect(self._toggle_play_pause)
         self.player_controls.next_clicked.connect(self.engine.next)
         self.player_controls.previous_clicked.connect(self.engine.previous)
-        self.engine.set_on_track_changed(self._on_track_changed)
+        self.engine.track_changed.connect(self._on_track_changed)
 
         # -- Layout --
         central = QWidget()
@@ -90,28 +90,28 @@ class MainWindow(QMainWindow):
         self._music_folder = WINDOWS_MUSIC_FOLDER
         self._rescan_library()
 
-    # -- Libreria -------------------------------------------------
+    # -- Library -------------------------------------------------
     def _choose_folder(self) -> None:
-        folder = QFileDialog.getExistingDirectory(self, "Scegli la cartella musicale", self._music_folder)
+        folder = QFileDialog.getExistingDirectory(self, "Choose the music folder", self._music_folder)
         if folder:
             self._music_folder = folder
             self._rescan_library()
 
     def _force_full_rescan(self) -> None:
-        """Svuota la cache e rilegge da zero i tag di tutti i file, anche
-        quelli non modificati (utile dopo un aggiornamento del programma)."""
+        """Clears the cache and re-reads the tags of all files from scratch,
+        even unmodified ones (useful after updating the app)."""
         database.clear_all_tracks()
         self._rescan_library()
 
     def _rescan_library(self) -> None:
         if not os.path.isdir(self._music_folder):
             QMessageBox.information(
-                self, "Cartella non trovata",
-                f"La cartella '{self._music_folder}' non esiste. Scegline un'altra."
+                self, "Folder not found",
+                f"The folder '{self._music_folder}' does not exist. Please choose another one."
             )
             return
 
-        progress = QProgressDialog("Scansione della libreria musicale...", "Annulla", 0, 100, self)
+        progress = QProgressDialog("Scanning music library...", "Cancel", 0, 100, self)
         progress.setWindowModality(Qt.WindowModal)
         progress.setMinimumDuration(0)
 
@@ -124,9 +124,9 @@ class MainWindow(QMainWindow):
         progress.close()
 
         albums = database.albums_grouped()
-        self.album_view.set_albums(albums)
+        self.album_view.set_albums(self._music_folder, albums)
 
-    # -- Riproduzione -------------------------------------------------
+    # -- Playback -------------------------------------------------
     def _play_album(self, paths: list[str], start_index: int) -> None:
         self._current_playlist = paths
         self.engine.load_playlist(paths, start_index)
@@ -137,7 +137,7 @@ class MainWindow(QMainWindow):
             self.engine.pause()
         else:
             if self._current_playlist:
-                self.engine.pause()  # riprende se era in pausa
+                self.engine.pause()  # resumes if it was paused
             else:
                 self.engine.play()
 

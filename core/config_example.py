@@ -51,7 +51,7 @@ for _d in (DOWNLOADS_DIR, DOWNLOADS_ALBUMS_DIR, DOWNLOADS_SINGLES_DIR, PREVIEW_C
 # Chiavi API — da compilare con le proprie credenziali gratuite.
 # Last.fm: https://www.last.fm/api/account/create  (gratuita, istantanea)
 # ---------------------------------------------------------------------
-LASTFM_API_KEY = os.environ.get("LASTFM_API_KEY", "fb243874c96a237c8774b48052fd6035")
+LASTFM_API_KEY = os.environ.get("LASTFM_API_KEY", "INSERT_YOUR_API_KEY_HERE")
 
 # Durata (in secondi) della preview scaricata via yt-dlp prima del
 # download completo.

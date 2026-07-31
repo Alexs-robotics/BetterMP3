@@ -67,6 +67,29 @@ QListWidget::item:selected {
     color: #ffffff;
 }
 
+/* --- Albero cartelle (collassabile) --- */
+QTreeWidget {
+    background-color: #1c1a24;
+    border: 1px solid #2e2a3a;
+    border-radius: 8px;
+    padding: 4px;
+    outline: none;
+}
+QTreeWidget::item {
+    padding: 5px 4px;
+    border-radius: 4px;
+}
+QTreeWidget::item:hover {
+    background-color: #2a2333;
+}
+QTreeWidget::item:selected {
+    background-color: #6a2fb0;
+    color: #ffffff;
+}
+QTreeView::branch {
+    background: transparent;
+}
+
 /* --- Etichette --- */
 QLabel {
     color: #d8d2e6;

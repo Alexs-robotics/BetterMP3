@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 class TrackEditorDialog(QDialog):
     def __init__(self, current_number: int, parent=None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Modifica numero traccia")
+        self.setWindowTitle("Edit track number")
 
         self.spin_box = QSpinBox()
         self.spin_box.setRange(1, 999)
@@ -28,7 +28,7 @@ class TrackEditorDialog(QDialog):
         buttons.rejected.connect(self.reject)
 
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Nuovo numero della traccia nell'album:"))
+        layout.addWidget(QLabel("New track number within the album:"))
         layout.addWidget(self.spin_box)
         layout.addWidget(buttons)
 

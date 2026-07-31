@@ -2,14 +2,19 @@
 album_view.py
 -------------
 Vista a due colonne:
-  - a sinistra la lista delle CARTELLE musicali trovate nella libreria
-    (raggruppamento per cartella fisica, non per tag ID3 "album" — vedi
-    nota in core/database.py)
-  - a destra i brani della cartella selezionata, ordinati per numero di
-    traccia, con possibilità di doppio click per suonare l'intera
-    cartella a partire da quel brano, e un pulsante per modificarne il
-    numero d'ordine.
+  - a sinistra un ALBERO di cartelle (QTreeWidget) che rispecchia la
+    struttura reale delle sottocartelle dentro la cartella musicale
+    (es. "Jesto" -> "Jesto - SAMSARA" -> ...), collassabile a ogni
+    livello. Solo le cartelle "foglia" che contengono davvero dei file
+    audio sono selezionabili per la riproduzione; le cartelle
+    intermedie servono solo a organizzare l'albero.
+  - a destra i brani della cartella foglia selezionata, ordinati per
+    numero di traccia, con possibilità di doppio click per suonare
+    l'intera cartella a partire da quel brano, e un pulsante per
+    modificarne il numero d'ordine.
 """
+
+import os
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -18,6 +23,8 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QPushButton,
+    QTreeWidget,
+    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -39,22 +46,23 @@ class AlbumView(QWidget):
         self._folders: dict = {}  # {percorso_cartella_completo: [righe]}
         self._current_folder_tracks: list = []
 
-        self.album_list = QListWidget()
-        self.album_list.currentItemChanged.connect(self._on_folder_selected)
+        self.album_tree = QTreeWidget()
+        self.album_tree.setHeaderHidden(True)
+        self.album_tree.currentItemChanged.connect(self._on_folder_selected)
 
         self.track_list = QListWidget()
         self.track_list.itemDoubleClicked.connect(self._on_track_double_clicked)
         self.track_list.currentRowChanged.connect(self._on_track_row_changed)
 
-        self.edit_track_number_button = QPushButton("Modifica numero traccia")
+        self.edit_track_number_button = QPushButton("Edit track number")
         self.edit_track_number_button.clicked.connect(self._on_edit_track_number)
 
         left_column = QVBoxLayout()
-        left_column.addWidget(QLabel("Cartelle musicali"))
-        left_column.addWidget(self.album_list)
+        left_column.addWidget(QLabel("Music folders"))
+        left_column.addWidget(self.album_tree)
 
         right_column = QVBoxLayout()
-        right_column.addWidget(QLabel("Brani (doppio click per suonare da qui)"))
+        right_column.addWidget(QLabel("Tracks (double-click to play from here)"))
         right_column.addWidget(self.track_list)
         right_column.addWidget(self.edit_track_number_button)
 
@@ -62,22 +70,69 @@ class AlbumView(QWidget):
         main_layout.addLayout(left_column, 1)
         main_layout.addLayout(right_column, 2)
 
-    def set_albums(self, albums_grouped: dict) -> None:
-        """`albums_grouped`: dict {percorso_cartella: [righe sqlite3.Row]}."""
+    def set_albums(self, root_folder: str, albums_grouped: dict) -> None:
+        """
+        `root_folder`: la cartella musicale scansionata (serve per calcolare
+        i percorsi relativi e costruire l'albero).
+        `albums_grouped`: dict {percorso_cartella_completo: [righe sqlite3.Row]},
+        una voce per ogni cartella FOGLIA che contiene almeno un brano.
+        """
         self._folders = albums_grouped
-        self.album_list.clear()
-        for folder_path in sorted(albums_grouped.keys(), key=database.folder_display_name):
-            item = QListWidgetItem(database.folder_display_name(folder_path))
-            item.setData(FOLDER_PATH_ROLE, folder_path)
-            item.setToolTip(folder_path)
-            self.album_list.addItem(item)
+        self.album_tree.clear()
 
-    def _on_folder_selected(self, current: QListWidgetItem, _previous: QListWidgetItem) -> None:
+        # Cache dei nodi già creati, chiave = tupla dei componenti del
+        # percorso relativo (es. ("Jesto", "Jesto - SAMSARA")), così le
+        # cartelle intermedie condivise da più album vengono create una
+        # sola volta e riusate.
+        node_cache: dict = {}
+
+        for folder_path in sorted(albums_grouped.keys(), key=lambda p: os.path.relpath(p, root_folder)):
+            rel_path = os.path.relpath(folder_path, root_folder)
+            components = [] if rel_path == "." else rel_path.split(os.sep)
+            if not components:
+                # Brano direttamente nella cartella radice: usa il nome
+                # della cartella radice come unico nodo.
+                components = [database.folder_display_name(folder_path)]
+
+            parent_item = None
+            path_key = ()
+            leaf_item = None
+            for component in components:
+                path_key = path_key + (component,)
+                item = node_cache.get(path_key)
+                if item is None:
+                    item = QTreeWidgetItem([component])
+                    node_cache[path_key] = item
+                    if parent_item is None:
+                        self.album_tree.addTopLevelItem(item)
+                    else:
+                        parent_item.addChild(item)
+                parent_item = item
+                leaf_item = item
+
+            # L'ultimo nodo del percorso è la cartella foglia reale: le
+            # attacchiamo il percorso completo, così diventa selezionabile
+            # per la riproduzione. I nodi intermedi restano senza questo
+            # dato e servono solo a organizzare/collassare l'albero.
+            leaf_item.setData(0, FOLDER_PATH_ROLE, folder_path)
+            leaf_item.setToolTip(0, folder_path)
+
+        self.album_tree.expandToDepth(0)
+
+    def _on_folder_selected(self, current: "QTreeWidgetItem", _previous: "QTreeWidgetItem") -> None:
         if current is None:
             self.track_list.clear()
             self._current_folder_tracks = []
             return
-        folder_path = current.data(FOLDER_PATH_ROLE)
+
+        folder_path = current.data(0, FOLDER_PATH_ROLE)
+        if not folder_path:
+            # Nodo intermedio (es. "Jesto"): non contiene brani propri,
+            # serve solo a organizzare l'albero. Svuota la lista brani.
+            self.track_list.clear()
+            self._current_folder_tracks = []
+            return
+
         self._current_folder_tracks = self._folders.get(folder_path, [])
         self.track_list.clear()
         for row in self._current_folder_tracks:
@@ -108,8 +163,8 @@ class AlbumView(QWidget):
             metadata.set_track_number(row["path"], new_number)
             database.update_track_number(row["path"], new_number)
             # Aggiorna la vista corrente senza dover ri-scansionare tutta la libreria.
-            current_item = self.album_list.currentItem()
-            folder_path = current_item.data(FOLDER_PATH_ROLE)
+            current_item = self.album_tree.currentItem()
+            folder_path = current_item.data(0, FOLDER_PATH_ROLE)
             self._folders = database.albums_grouped()
             self._current_folder_tracks = self._folders.get(folder_path, [])
             self.track_list.clear()

@@ -6,6 +6,9 @@ venv/
 env/
 .venv/
 
+#Config
+core/config.py
+
 # --- PyInstaller ---
 build/  
 dist/

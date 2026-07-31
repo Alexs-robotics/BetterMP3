@@ -55,7 +55,7 @@ def search_track(query: str) -> Optional[YoutubeSearchResult]:
         return YoutubeSearchResult(
             video_id=top["id"],
             title=top.get("title", query),
-            channel=top.get("uploader", "Sconosciuto"),
+            channel=top.get("uploader", "Unknown"),
             url=top.get("webpage_url", f"https://www.youtube.com/watch?v={top['id']}"),
         )
 
@@ -124,4 +124,4 @@ def _sanitize_folder_name(name: str) -> str:
     invalid = '<>:"/\\|?*'
     for ch in invalid:
         name = name.replace(ch, "_")
-    return name.strip() or "Sconosciuto"
+    return name.strip() or "Unknown"

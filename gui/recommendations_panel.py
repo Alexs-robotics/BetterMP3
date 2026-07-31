@@ -64,7 +64,7 @@ class _PreviewThread(QThread):
         try:
             result = youtube_service.search_track(f"{self.artist} {self.title} audio")
             if result is None:
-                self.finished_error.emit("Nessun risultato trovato su YouTube.")
+                self.finished_error.emit("No results found on YouTube.")
                 return
             safe_name = f"preview_{result.video_id}"
             preview_path = youtube_service.download_preview(result.url, safe_name)
@@ -105,21 +105,21 @@ class RecommendationsPanel(QWidget):
         self._current_result_title = ""
         self._current_result_artist = ""
 
-        self.title_label = QLabel("Consigli per te")
+        self.title_label = QLabel("Recommended for you")
         self.title_label.setStyleSheet("font-weight: 600;")
 
         self.similar_list = QListWidget()
         self.similar_list.itemClicked.connect(self._on_similar_selected)
 
-        self.preview_button = QPushButton("▶ Ascolta anteprima (30s)")
+        self.preview_button = QPushButton("▶ Play preview (30s)")
         self.preview_button.setEnabled(False)
         self.preview_button.clicked.connect(self._on_preview_clicked)
 
-        self.stop_preview_button = QPushButton("⏹ Ferma anteprima")
+        self.stop_preview_button = QPushButton("⏹ Stop preview")
         self.stop_preview_button.setEnabled(False)
         self.stop_preview_button.clicked.connect(self._on_stop_preview_clicked)
 
-        self.download_button = QPushButton("⬇ Scarica brano completo")
+        self.download_button = QPushButton("⬇ Download full track")
         self.download_button.setEnabled(False)
         self.download_button.clicked.connect(self._on_download_clicked)
 
@@ -140,8 +140,26 @@ class RecommendationsPanel(QWidget):
         self._preview_thread: _PreviewThread | None = None
         self._download_thread: _DownloadThread | None = None
 
+        # Riferimenti "tenuti in vita" per ogni thread in esecuzione. Senza
+        # questa lista, se l'utente cambia brano rapidamente il thread
+        # precedente (a cui non punta più nessuna variabile) può essere
+        # distrutto dal garbage collector di Python MENTRE gira ancora,
+        # il che in PySide6 causa un crash dell'intera applicazione. Il
+        # thread viene rimosso dalla lista solo a lavoro concluso.
+        self._active_threads: list[QThread] = []
+
+    def _launch_thread(self, thread: QThread) -> None:
+        self._active_threads.append(thread)
+        thread.finished.connect(lambda: self._cleanup_thread(thread))
+        thread.start()
+
+    def _cleanup_thread(self, thread: QThread) -> None:
+        if thread in self._active_threads:
+            self._active_threads.remove(thread)
+        thread.deleteLater()
+
     def refresh_for_track(self, title: str, artist: str) -> None:
-        self.status_label.setText("Ricerca brani simili in corso...")
+        self.status_label.setText("Searching for similar tracks...")
         self.similar_list.clear()
         self.preview_button.setEnabled(False)
         self.download_button.setEnabled(False)
@@ -149,10 +167,15 @@ class RecommendationsPanel(QWidget):
         self._fetch_thread = _FetchSimilarThread(title, artist)
         self._fetch_thread.finished_ok.connect(self._on_similar_ready)
         self._fetch_thread.finished_error.connect(self._on_error)
-        self._fetch_thread.start()
+        self._launch_thread(self._fetch_thread)
 
     def _on_similar_ready(self, results) -> None:
-        self.status_label.setText(f"{len(results)} brani simili trovati.")
+        # Se nel frattempo l'utente ha selezionato un altro brano, questo
+        # risultato è ormai superato: lo scartiamo invece di sovrascrivere
+        # la lista con dati non più pertinenti.
+        if self.sender() is not self._fetch_thread:
+            return
+        self.status_label.setText(f"{len(results)} similar tracks found.")
         for r in results:
             item = QListWidgetItem(f"{r.title} — {r.artist}  ({int(r.match_score * 100)}% match)")
             item.setData(1000, (r.title, r.artist))
@@ -169,7 +192,7 @@ class RecommendationsPanel(QWidget):
         self._current_video_url = None
         self.preview_button.setEnabled(True)
         self.download_button.setEnabled(False)
-        self.status_label.setText("Pronto per l'anteprima.")
+        self.status_label.setText("Ready for preview.")
 
     def _on_preview_clicked(self) -> None:
         # Ferma un'eventuale preview già in riproduzione prima di scaricarne
@@ -179,25 +202,25 @@ class RecommendationsPanel(QWidget):
         if self.main_engine is not None and self.main_engine.is_playing():
             self.main_engine.pause()
 
-        self.status_label.setText("Download anteprima in corso...")
+        self.status_label.setText("Downloading preview...")
         self.preview_button.setEnabled(False)
 
         self._preview_thread = _PreviewThread(self._current_result_title, self._current_result_artist)
         self._preview_thread.finished_ok.connect(self._on_preview_ready)
         self._preview_thread.finished_error.connect(self._on_error)
-        self._preview_thread.start()
+        self._launch_thread(self._preview_thread)
 
     def _on_preview_ready(self, preview_path: str, video_url: str) -> None:
         self._current_video_url = video_url
         self.preview_engine.load_playlist([preview_path], start_index=0)
-        self.status_label.setText("Anteprima in riproduzione. Ti piace?")
+        self.status_label.setText("Preview playing. Do you like it?")
         self.preview_button.setEnabled(True)
         self.stop_preview_button.setEnabled(True)
         self.download_button.setEnabled(True)
 
     def _on_stop_preview_clicked(self) -> None:
         self._stop_preview_playback()
-        self.status_label.setText("Anteprima fermata.")
+        self.status_label.setText("Preview stopped.")
 
     def _stop_preview_playback(self) -> None:
         self.preview_engine.stop()
@@ -206,7 +229,7 @@ class RecommendationsPanel(QWidget):
     def _on_download_clicked(self) -> None:
         if not self._current_video_url:
             return
-        self.status_label.setText("Download completo in corso...")
+        self.status_label.setText("Downloading full track...")
         self.download_button.setEnabled(False)
 
         # Se il brano correntemente in libreria appartiene a un album, viene chiesto
@@ -217,14 +240,14 @@ class RecommendationsPanel(QWidget):
         )
         self._download_thread.finished_ok.connect(self._on_download_ready)
         self._download_thread.finished_error.connect(self._on_error)
-        self._download_thread.start()
+        self._launch_thread(self._download_thread)
 
     def _on_download_ready(self, path: str) -> None:
-        self.status_label.setText(f"Scaricato in: {path}")
+        self.status_label.setText(f"Downloaded to: {path}")
         self.download_button.setEnabled(True)
 
     def _on_error(self, message: str) -> None:
-        self.status_label.setText(f"Errore: {message}")
+        self.status_label.setText(f"Error: {message}")
         self.preview_button.setEnabled(True)
         self.download_button.setEnabled(bool(self._current_video_url))
-        QMessageBox.warning(self, "Errore", message)
+        QMessageBox.warning(self, "Error", message)

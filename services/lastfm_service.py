@@ -30,18 +30,19 @@ API_ROOT = "https://ws.audioscrobbler.com/2.0/"
 class SimilarTrack:
     title: str
     artist: str
-    match_score: float  # 0.0 - 1.0, quanto è "simile" secondo Last.fm
+    match_score: float  # 0.0 - 1.0, how "similar" according to Last.fm
 
 
 def get_similar_tracks(title: str, artist: str, limit: int = 10) -> List[SimilarTrack]:
     """
     Interroga track.getSimilar. Se Last.fm non trova il brano esatto
-    (succede con brani poco noti/locali), fa un fallback su
-    artist.getSimilar per restare comunque utile.
+    (succede spesso con artisti di nicchia/poco noti su Last.fm), fa un
+    fallback su artist.getSimilar + artist.getTopTracks per restituire
+    comunque titoli di brani reali (non solo nomi di artisti).
     """
     if LASTFM_API_KEY == "INSERISCI_QUI_LA_TUA_API_KEY":
         raise RuntimeError(
-            "Devi impostare LASTFM_API_KEY in core/config.py (chiave gratuita su last.fm/api)"
+            "You must set LASTFM_API_KEY in core/config.py (free key from last.fm/api)"
         )
 
     params = {
@@ -66,14 +67,40 @@ def get_similar_tracks(title: str, artist: str, limit: int = 10) -> List[Similar
             for t in similar_tracks_node
         ]
 
-    # Fallback: nessun match diretto sul brano, proviamo con l'artista.
+    # Fallback: no direct track match, try via similar artists instead.
     return _similar_by_artist(artist, limit)
 
 
-def _similar_by_artist(artist: str, limit: int) -> List[SimilarTrack]:
+def _get_top_track_for_artist(artist_name: str) -> str | None:
+    """
+    Ritorna il titolo del brano più popolare di un artista secondo
+    Last.fm (artist.getTopTracks), oppure None se non trovato.
+    Usato per dare un titolo REALE ai suggerimenti quando si è dovuto
+    ripiegare sugli "artisti simili" invece che sui "brani simili".
+    """
+    params = {
+        "method": "artist.gettoptracks",
+        "artist": artist_name,
+        "api_key": LASTFM_API_KEY,
+        "format": "json",
+        "limit": 1,
+    }
+    try:
+        response = requests.get(API_ROOT, params=params, timeout=10)
+        data = response.json()
+        tracks = data.get("toptracks", {}).get("track", [])
+        if tracks:
+            top = tracks[0] if isinstance(tracks, list) else tracks
+            return top.get("name")
+    except Exception:
+        pass
+    return None
+
+
+def _similar_by_artist(seed_artist: str, limit: int) -> List[SimilarTrack]:
     params = {
         "method": "artist.getsimilar",
-        "artist": artist,
+        "artist": seed_artist,
         "api_key": LASTFM_API_KEY,
         "format": "json",
         "limit": limit,
@@ -82,11 +109,31 @@ def _similar_by_artist(artist: str, limit: int) -> List[SimilarTrack]:
     data = response.json()
     artists_node = data.get("similarartists", {}).get("artist", [])
 
-    results = []
+    results: List[SimilarTrack] = []
     for a in artists_node:
-        # Non abbiamo un titolo di brano specifico: suggeriamo l'artista
-        # simile stesso, la ricerca YouTube farà il resto.
+        similar_artist_name = a["name"]
+
+        # Last.fm a volte include l'artista di partenza stesso nei
+        # risultati quando non ha abbastanza dati: lo escludiamo, non è
+        # un vero suggerimento.
+        if similar_artist_name.strip().lower() == seed_artist.strip().lower():
+            continue
+
+        # Recupera il brano più popolare di quell'artista, così il
+        # suggerimento ha un titolo di canzone reale invece di un
+        # placeholder generico.
+        top_track_title = _get_top_track_for_artist(similar_artist_name)
+        if not top_track_title:
+            continue
+
         results.append(
-            SimilarTrack(title=f"Brani di {a['name']}", artist=a["name"], match_score=float(a.get("match", 0.0)))
+            SimilarTrack(
+                title=top_track_title,
+                artist=similar_artist_name,
+                match_score=float(a.get("match", 0.0)),
+            )
         )
+        if len(results) >= limit:
+            break
+
     return results
