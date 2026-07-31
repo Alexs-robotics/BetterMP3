@@ -1,8 +1,6 @@
-# MP3 Player — Windows Desktop App
+# BetterMP3
 
-Native desktop app (not a webapp) for Windows, written in Python with
-a Qt GUI (PySide6, dark black/purple theme), packaged as a `.exe` via
-PyInstaller.
+![alt text](https://github.com/Alexs-robotics/BetterMP3/blob/main/GUIPreview.png)
 
 ## Features
 
