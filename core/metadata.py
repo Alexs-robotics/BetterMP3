@@ -37,15 +37,15 @@ def read_metadata(path: str) -> TrackMetadata:
         pass
 
     if audio is None:
-        # File non supportato per i tag (es. wav senza tag): usa il nome file.
+        # File format not supported for tags (e.g. wav without tags): use the filename.
         import os
         name = os.path.splitext(os.path.basename(path))[0]
-        return TrackMetadata(path, name, "Sconosciuto", "Sconosciuto", 0, duration)
+        return TrackMetadata(path, name, "Unknown Artist", "Unknown Album", 0, duration)
 
     def _first(tag_name, default):
         val = audio.get(tag_name)
-        # Alcuni file hanno il tag presente ma vuoto ("" o solo spazi):
-        # in quel caso va trattato come mancante, non come stringa valida.
+        # Some files have the tag present but empty ("" or just whitespace):
+        # treat that as missing, not as a valid string.
         if val and str(val[0]).strip():
             return val[0]
         return default
@@ -53,12 +53,12 @@ def read_metadata(path: str) -> TrackMetadata:
     import os
     filename_without_ext = os.path.splitext(os.path.basename(path))[0]
 
-    # Se il tag titolo manca, usa il nome del file (senza estensione)
-    # invece di un generico "Senza titolo": è molto più utile per
-    # riconoscere il brano nella lista.
+    # If the title tag is missing, use the filename (without extension)
+    # instead of a generic "Untitled" — much more useful for recognizing
+    # the track in the list.
     title = _first("title", filename_without_ext)
-    artist = _first("artist", "Artista sconosciuto")
-    album = _first("album", "Album sconosciuto")
+    artist = _first("artist", "Unknown Artist")
+    album = _first("album", "Unknown Album")
 
     track_raw = _first("tracknumber", "0")
     # Il tag può essere "3" oppure "3/12" (traccia 3 di 12).
@@ -88,6 +88,33 @@ def set_track_number(path: str, new_number: int) -> None:
     else:
         audio = MutagenFile(path, easy=True)
         if audio is None:
-            raise ValueError(f"Formato non supportato per la modifica dei tag: {path}")
+            raise ValueError(f"Unsupported format for tag editing: {path}")
         audio["tracknumber"] = str(new_number)
         audio.save()
+
+
+def write_full_tags(path: str, title: str, artist: str, album: str, track_number: int = 1) -> None:
+    """
+    Scrive titolo, artista, album e numero di traccia su un file mp3,
+    creando l'header ID3 se non esiste ancora (es. subito dopo un
+    download da YouTube via yt-dlp, che spesso lascia tag assenti o
+    incompleti). Usata dal flusso di download dei brani consigliati,
+    così la libreria mostra subito le informazioni corrette invece di
+    "Unknown Artist"/"Unknown Album".
+    """
+    try:
+        audio = EasyID3(path)
+    except Exception:
+        # Nessun header ID3 presente: lo creiamo da zero.
+        raw = MutagenFile(path)
+        if raw is None:
+            raise ValueError(f"Unsupported format for tag writing: {path}")
+        raw.add_tags()
+        raw.save()
+        audio = EasyID3(path)
+
+    audio["title"] = title
+    audio["artist"] = artist
+    audio["album"] = album
+    audio["tracknumber"] = str(track_number)
+    audio.save()

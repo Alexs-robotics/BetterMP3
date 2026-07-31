@@ -97,6 +97,33 @@ def _get_top_track_for_artist(artist_name: str) -> str | None:
     return None
 
 
+def get_track_album(title: str, artist: str) -> str | None:
+    """
+    Interroga track.getInfo per scoprire a quale album appartiene un
+    brano secondo Last.fm. Usata quando si scarica il brano completo,
+    per organizzarlo in Music/<artista>/<album>/ invece che in una
+    cartella generica. Ritorna None se Last.fm non ha questa
+    informazione (es. brano molto di nicchia): in quel caso il
+    chiamante userà una cartella di fallback tipo "Singles".
+    """
+    params = {
+        "method": "track.getinfo",
+        "artist": artist,
+        "track": title,
+        "api_key": LASTFM_API_KEY,
+        "format": "json",
+    }
+    try:
+        response = requests.get(API_ROOT, params=params, timeout=10)
+        data = response.json()
+        album_node = data.get("track", {}).get("album")
+        if album_node:
+            return album_node.get("title")
+    except Exception:
+        pass
+    return None
+
+
 def _similar_by_artist(seed_artist: str, limit: int) -> List[SimilarTrack]:
     params = {
         "method": "artist.getsimilar",

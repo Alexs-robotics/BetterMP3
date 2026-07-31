@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
 
 from core.player import PlaybackEngine
 from services import lastfm_service, youtube_service
-
+from core.config import WINDOWS_MUSIC_FOLDER
 
 class _FetchSimilarThread(QThread):
     finished_ok = Signal(list)
@@ -86,8 +86,14 @@ class _DownloadThread(QThread):
 
     def run(self) -> None:
         try:
-            safe_name = f"{self.artist} - {self.title}".replace("/", "_")
-            path = youtube_service.download_full_track(self.video_url, safe_name, self.album_name)
+            # Pass all 5 arguments exactly as expected by the function signature
+            path = youtube_service.download_full_track(
+                self.video_url,
+                self.artist,
+                self.title,
+                self.album_name,
+                WINDOWS_MUSIC_FOLDER
+            )
             self.finished_ok.emit(path)
         except Exception as exc:
             self.finished_error.emit(str(exc))

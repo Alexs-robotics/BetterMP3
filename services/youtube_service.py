@@ -89,19 +89,27 @@ def download_preview(video_url: str, safe_filename: str) -> str:
     return os.path.join(PREVIEW_CACHE_DIR, f"{safe_filename}.mp3")
 
 
-def download_full_track(video_url: str, safe_filename: str, album_name: Optional[str] = None) -> str:
+def download_full_track(
+    video_url: str,
+    artist_name: str,
+    track_title: str,
+    album_name: Optional[str],
+    music_root_folder: str,
+) -> str:
     """
-    Scarica il brano completo come mp3.
-    Se `album_name` è indicato, il file finisce in downloads/albums/<album>/,
-    altrimenti in downloads/singles/ (come richiesto: album e singoli
-    separati in cartelle diverse).
+    Scarica il brano completo come mp3 DENTRO la cartella musicale
+    scansionata dall'app (non in una cartella separata dell'app), così
+    la libreria lo rileva automaticamente alla prossima scansione.
+
+    Struttura creata: <music_root_folder>/<Artista>/<Album>/<Titolo>.mp3
+    (se `album_name` non è noto, viene usata la sottocartella "Singles").
     """
-    if album_name:
-        target_dir = os.path.join(DOWNLOADS_ALBUMS_DIR, _sanitize_folder_name(album_name))
-    else:
-        target_dir = DOWNLOADS_SINGLES_DIR
+    artist_folder = _sanitize_folder_name(artist_name)
+    album_folder = _sanitize_folder_name(album_name or "Singles")
+    target_dir = os.path.join(music_root_folder, artist_folder, album_folder)
     os.makedirs(target_dir, exist_ok=True)
 
+    safe_filename = _sanitize_folder_name(track_title)
     output_template = os.path.join(target_dir, f"{safe_filename}.%(ext)s")
     ydl_opts = {
         "quiet": True,
