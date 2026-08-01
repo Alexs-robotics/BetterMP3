@@ -146,6 +146,24 @@ def download_preview(video_url: str, safe_filename: str) -> str:
     return os.path.join(PREVIEW_CACHE_DIR, f"{safe_filename}.mp3")
 
 
+def expected_track_path(
+    artist_name: str,
+    track_title: str,
+    album_name: Optional[str],
+    music_root_folder: str,
+) -> str:
+    """
+    Calcola il percorso in cui `download_full_track` salverebbe questo
+    brano, SENZA scaricare nulla. Usato per capire se un brano è già
+    presente in libreria (es. durante la sincronizzazione dei Liked
+    Songs di Spotify) ed evitare di riscaricarlo inutilmente.
+    """
+    artist_folder = _sanitize_folder_name(artist_name)
+    album_folder = _sanitize_folder_name(album_name or "Singles")
+    safe_filename = _sanitize_folder_name(track_title)
+    return os.path.join(music_root_folder, artist_folder, album_folder, f"{safe_filename}.mp3")
+
+
 def download_full_track(
     video_url: str,
     artist_name: str,

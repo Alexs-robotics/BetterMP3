@@ -117,7 +117,8 @@ class AlbumView(QWidget):
             leaf_item.setData(0, FOLDER_PATH_ROLE, folder_path)
             leaf_item.setToolTip(0, folder_path)
 
-        self.album_tree.expandToDepth(0)
+        self.album_tree.collapseAll()
+
 
     def _on_folder_selected(self, current: "QTreeWidgetItem", _previous: "QTreeWidgetItem") -> None:
         if current is None:

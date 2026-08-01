@@ -8,7 +8,6 @@ Main window. Ties together:
   - the recommendations panel (recommendations_panel.py)
   - the manual search & download page (search_panel.py)
 """
-
 import os
 
 from PySide6.QtCore import Qt
@@ -18,8 +17,10 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressDialog,
     QPushButton,
+    QMenu,          # <-- Aggiunto
     QSplitter,
     QVBoxLayout,
+    QHBoxLayout,    # <-- Aggiunto
     QWidget,
 )
 
@@ -30,6 +31,7 @@ from gui.album_view import AlbumView
 from gui.player_controls import PlayerControls
 from gui.recommendations_panel import RecommendationsPanel
 from gui.search_panel import SearchWindow
+from gui.spotify_panel import SpotifySyncWindow
 
 
 class MainWindow(QMainWindow):
@@ -41,10 +43,8 @@ class MainWindow(QMainWindow):
         self.engine = PlaybackEngine()
         self._current_playlist: list[str] = []
 
-        # Tenuta come attributo (non solo variabile locale) così la
-        # finestra non viene distrutta dal garbage collector non appena
-        # esce dallo scope del metodo che la apre.
         self.search_window: SearchWindow | None = None
+        self.spotify_window: SpotifySyncWindow | None = None
 
         self.album_view = AlbumView()
         self.player_controls = PlayerControls(self.engine)
@@ -52,25 +52,46 @@ class MainWindow(QMainWindow):
             preview_engine=PlaybackEngine(), main_engine=self.engine
         )
 
-        self.rescan_button = QPushButton("Rescan Music folder")
-        self.rescan_button.clicked.connect(self._rescan_library)
+        # -- Creazione del Menù a Tendina --
+        self.menu_button = QPushButton("Gestione Libreria ▾")
+        self.options_menu = QMenu(self.menu_button)
 
-        self.force_rescan_button = QPushButton("Full re-read (ignore cache)")
-        self.force_rescan_button.setToolTip(
+        # Azione: Rescan
+        rescan_action = self.options_menu.addAction("Rescan Music folder")
+        rescan_action.triggered.connect(self._rescan_library)
+
+        # Azione: Force Rescan
+        force_rescan_action = self.options_menu.addAction("Full re-read (ignore cache)")
+        force_rescan_action.setToolTip(
             "Re-reads the tags of ALL files from scratch, even unmodified ones.\n"
             "Use this if you updated the app and some titles/track numbers still look wrong."
         )
-        self.force_rescan_button.clicked.connect(self._force_full_rescan)
+        force_rescan_action.triggered.connect(self._force_full_rescan)
 
-        self.choose_folder_button = QPushButton("Choose a different music folder...")
-        self.choose_folder_button.clicked.connect(self._choose_folder)
+        # Azione: Scegli Cartella
+        choose_folder_action = self.options_menu.addAction("Choose a different music folder...")
+        choose_folder_action.triggered.connect(self._choose_folder)
+        
+        self.options_menu.addSeparator()  # Separatore visivo
 
-        self.search_button = QPushButton("Search & Download")
-        self.search_button.setToolTip(
+        # Azione: Cerca e Scarica
+        search_action = self.options_menu.addAction("Search & Download")
+        search_action.setToolTip(
             "Search for any song or album online, preview it, and download "
             "the single track or the entire album into your music folder."
         )
-        self.search_button.clicked.connect(self._open_search_window)
+        search_action.triggered.connect(self._open_search_window)
+
+        # Azione: Sincronizza Spotify
+        spotify_action = self.options_menu.addAction("Sync Spotify Liked Songs")
+        spotify_action.setToolTip(
+            "Read your Spotify Liked Songs (read-only) and download them "
+            "all via YouTube into your music folder."
+        )
+        spotify_action.triggered.connect(self._open_spotify_window)
+
+        # Assegna il menù al pulsante
+        self.menu_button.setMenu(self.options_menu)
 
         # -- Signal connections --
         self.album_view.play_album_requested.connect(self._play_album)
@@ -84,12 +105,11 @@ class MainWindow(QMainWindow):
         central = QWidget()
         main_layout = QVBoxLayout(central)
 
-        top_buttons = QVBoxLayout()
-        top_buttons.addWidget(self.rescan_button)
-        top_buttons.addWidget(self.force_rescan_button)
-        top_buttons.addWidget(self.choose_folder_button)
-        top_buttons.addWidget(self.search_button)
-        main_layout.addLayout(top_buttons)
+        # Barra superiore orizzontale per il bottone del menù
+        top_layout = QHBoxLayout()
+        top_layout.addWidget(self.menu_button)
+        top_layout.addStretch()  # Spinge il bottone a sinistra
+        main_layout.addLayout(top_layout)
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.album_view)
@@ -152,6 +172,14 @@ class MainWindow(QMainWindow):
         self.search_window.show()
         self.search_window.raise_()
         self.search_window.activateWindow()
+
+    def _open_spotify_window(self) -> None:
+        if self.spotify_window is None:
+            self.spotify_window = SpotifySyncWindow(main_engine=self.engine, parent=self)
+            self.spotify_window.library_changed.connect(self._rescan_library)
+        self.spotify_window.show()
+        self.spotify_window.raise_()
+        self.spotify_window.activateWindow()
 
     # -- Playback -------------------------------------------------
     def _play_album(self, paths: list[str], start_index: int) -> None:

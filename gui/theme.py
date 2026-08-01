@@ -88,8 +88,28 @@ QTreeWidget::item:selected {
 }
 QTreeView::branch {
     background: transparent;
+    border-image: none;
 }
 
+/* Freccina chiusa (collassata) - Senza virgolette e con border-image a none */
+QTreeView::branch:has-children:closed {
+    border-image: none;
+    image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNiOGIwYzkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI5IDE4IDE1IDEyIDkgNiIvPjwvc3ZnPg==);
+}
+
+/* Freccina aperta (espansa) */
+QTreeView::branch:has-children:open {
+    border-image: none;
+    image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNiOGIwYzkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI2IDkgMTIgMTUgMTggOSIvPjwvc3ZnPg==);
+}
+
+/* Effetto hover (viola) */
+QTreeView::branch:has-children:closed:hover {
+    image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5ZDRlZGQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI5IDE4IDE1IDEyIDkgNiIvPjwvc3ZnPg==);
+}
+QTreeView::branch:has-children:open:hover {
+    image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5ZDRlZGQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI2IDkgMTIgMTUgMTggOSIvPjwvc3ZnPg==);
+}
 /* --- Etichette --- */
 QLabel {
     color: #d8d2e6;
@@ -189,4 +209,30 @@ QToolTip {
     border: 1px solid #9d4edd;
     padding: 4px;
 }
+
+
+/* --- Menu a tendina (QMenu) --- */
+QMenu {
+    background-color: #1c1a24;
+    color: #f1eef7;
+    border: 1px solid #3d3550;
+    border-radius: 4px;
+    padding: 4px 0px;
+}
+QMenu::item {
+    padding: 6px 24px 6px 12px;
+    background-color: transparent;
+}
+QMenu::item:selected {
+    background-color: #6a2fb0;
+}
+QMenu::item:disabled {
+    color: #6b6478;
+}
+QMenu::separator {
+    height: 1px;
+    background-color: #2e2a3a;
+    margin: 4px 0px;
+}
+
 """
