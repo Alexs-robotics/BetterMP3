@@ -2,7 +2,8 @@
 youtube_service.py
 -------------------
 Usa `yt-dlp` per:
-  1. cercare su YouTube un brano consigliato (titolo + artista)
+  1. cercare su YouTube un brano consigliato (titolo + artista), o una
+     lista di risultati per la ricerca manuale
   2. scaricarne solo una ANTEPRIMA di ~30 secondi (usa la funzione
      "download_ranges" di yt-dlp, che taglia durante il download senza
      dover scaricare l'intero file)
@@ -17,8 +18,9 @@ caricamenti, o dove la legge locale lo consente).
 """
 
 import os
+import shutil
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional
 
 import yt_dlp
 
@@ -58,6 +60,61 @@ def search_track(query: str) -> Optional[YoutubeSearchResult]:
             channel=top.get("uploader", "Unknown"),
             url=top.get("webpage_url", f"https://www.youtube.com/watch?v={top['id']}"),
         )
+
+
+def search_tracks(query: str, limit: int = 15) -> List[YoutubeSearchResult]:
+    """
+    Come `search_track`, ma ritorna fino a `limit` risultati invece di
+    uno solo. Usata dalla pagina di ricerca manuale in modalità
+    "Songs", dove l'utente sceglie tra più brani trovati.
+    """
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "default_search": f"ytsearch{max(1, limit)}",
+        "noplaylist": True,
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(query, download=False)
+        entries = info.get("entries") or []
+        results: List[YoutubeSearchResult] = []
+        for entry in entries:
+            if not entry:
+                continue
+            results.append(
+                YoutubeSearchResult(
+                    video_id=entry["id"],
+                    title=entry.get("title", query),
+                    channel=entry.get("uploader", "Unknown"),
+                    url=entry.get("webpage_url", f"https://www.youtube.com/watch?v={entry['id']}"),
+                )
+            )
+        return results
+
+
+def clear_preview_cache() -> None:
+    """
+    Svuota completamente la cartella delle anteprime (i file mp3 di
+    ~30s scaricati per l'ascolto rapido di un brano prima di
+    scaricarlo per intero). Le anteprime sono usa-e-getta: non ha
+    senso tenerle tra un riavvio e l'altro dell'app, e altrimenti col
+    tempo si accumulerebbero senza motivo occupando spazio su disco.
+
+    Va chiamata una volta sola, all'avvio del programma (vedi main.py).
+    Non solleva eccezioni se un file è bloccato o già rimosso: la
+    pulizia della cache non deve mai impedire l'avvio dell'app.
+    """
+    if not os.path.isdir(PREVIEW_CACHE_DIR):
+        return
+    for name in os.listdir(PREVIEW_CACHE_DIR):
+        entry_path = os.path.join(PREVIEW_CACHE_DIR, name)
+        try:
+            if os.path.isfile(entry_path) or os.path.islink(entry_path):
+                os.remove(entry_path)
+            elif os.path.isdir(entry_path):
+                shutil.rmtree(entry_path)
+        except Exception as exc:
+            print(f"[youtube_service] Could not remove preview cache file {entry_path}: {exc}")
 
 
 def download_preview(video_url: str, safe_filename: str) -> str:

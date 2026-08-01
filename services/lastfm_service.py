@@ -2,7 +2,8 @@
 lastfm_service.py
 ------------------
 Usa l'API pubblica e gratuita di Last.fm per trovare brani "simili" a
-uno già presente in libreria.
+uno già presente in libreria, e per cercare brani/album per nome
+(usato dalla pagina di ricerca manuale).
 
 NOTA IMPORTANTE: originariamente il progetto avrebbe dovuto usare
 l'endpoint "Recommendations" di Spotify. Spotify lo ha però disattivato
@@ -33,6 +34,28 @@ class SimilarTrack:
     match_score: float  # 0.0 - 1.0, how "similar" according to Last.fm
 
 
+@dataclass
+class AlbumResult:
+    """Un risultato della ricerca album.search (titolo + artista)."""
+    title: str
+    artist: str
+
+
+@dataclass
+class AlbumTrackInfo:
+    """Un brano nella tracklist di un album, secondo album.getInfo."""
+    title: str
+    artist: str
+    track_number: int
+
+
+def _check_api_key() -> None:
+    if LASTFM_API_KEY == "INSERISCI_QUI_LA_TUA_API_KEY":
+        raise RuntimeError(
+            "You must set LASTFM_API_KEY in core/config.py (free key from last.fm/api)"
+        )
+
+
 def get_similar_tracks(title: str, artist: str, limit: int = 10) -> List[SimilarTrack]:
     """
     Interroga track.getSimilar. Se Last.fm non trova il brano esatto
@@ -40,10 +63,7 @@ def get_similar_tracks(title: str, artist: str, limit: int = 10) -> List[Similar
     fallback su artist.getSimilar + artist.getTopTracks per restituire
     comunque titoli di brani reali (non solo nomi di artisti).
     """
-    if LASTFM_API_KEY == "INSERISCI_QUI_LA_TUA_API_KEY":
-        raise RuntimeError(
-            "You must set LASTFM_API_KEY in core/config.py (free key from last.fm/api)"
-        )
+    _check_api_key()
 
     params = {
         "method": "track.getsimilar",
@@ -164,3 +184,70 @@ def _similar_by_artist(seed_artist: str, limit: int) -> List[SimilarTrack]:
             break
 
     return results
+
+
+# ---------------------------------------------------------------------
+# Ricerca manuale (pagina "Search & Download")
+# ---------------------------------------------------------------------
+
+def search_albums(query: str, limit: int = 15) -> List[AlbumResult]:
+    """
+    Cerca album il cui nome corrisponde (anche parzialmente) a `query`,
+    tramite album.search. Usata dalla pagina di ricerca quando l'utente
+    è in modalità "Albums".
+    """
+    _check_api_key()
+
+    params = {
+        "method": "album.search",
+        "album": query,
+        "api_key": LASTFM_API_KEY,
+        "format": "json",
+        "limit": limit,
+    }
+    response = requests.get(API_ROOT, params=params, timeout=10)
+    data = response.json()
+
+    matches = data.get("results", {}).get("albummatches", {}).get("album", [])
+    seen = set()
+    results: List[AlbumResult] = []
+    for a in matches:
+        key = (a["name"].strip().lower(), a["artist"].strip().lower())
+        if key in seen:
+            # Last.fm a volte ripete lo stesso album (edizioni diverse):
+            # non serve mostrarlo più volte nella lista dei risultati.
+            continue
+        seen.add(key)
+        results.append(AlbumResult(title=a["name"], artist=a["artist"]))
+    return results
+
+
+def get_album_tracks(artist: str, album: str) -> List[AlbumTrackInfo]:
+    """
+    Ritorna la tracklist ufficiale di un album (album.getInfo), in
+    ordine, con i numeri di traccia progressivi. Usata dalla pagina di
+    ricerca per mostrare i brani di un album selezionato e per pilotare
+    il download completo dell'album.
+    """
+    _check_api_key()
+
+    params = {
+        "method": "album.getinfo",
+        "artist": artist,
+        "album": album,
+        "api_key": LASTFM_API_KEY,
+        "format": "json",
+    }
+    response = requests.get(API_ROOT, params=params, timeout=10)
+    data = response.json()
+
+    tracks_node = data.get("album", {}).get("tracks", {}).get("track", [])
+    if isinstance(tracks_node, dict):
+        # Last.fm non mette il singolo brano in una lista quando l'album
+        # ne contiene uno solo: lo normalizziamo qui.
+        tracks_node = [tracks_node]
+
+    result: List[AlbumTrackInfo] = []
+    for i, t in enumerate(tracks_node, start=1):
+        result.append(AlbumTrackInfo(title=t["name"], artist=artist, track_number=i))
+    return result

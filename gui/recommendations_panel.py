@@ -31,8 +31,10 @@ from PySide6.QtWidgets import (
 )
 
 from core.player import PlaybackEngine
+from core.net_errors import is_no_internet_error
 from services import lastfm_service, youtube_service
 from core.config import WINDOWS_MUSIC_FOLDER
+
 
 class _FetchSimilarThread(QThread):
     finished_ok = Signal(list)
@@ -48,7 +50,10 @@ class _FetchSimilarThread(QThread):
             results = lastfm_service.get_similar_tracks(self.title, self.artist)
             self.finished_ok.emit(results)
         except Exception as exc:
-            self.finished_error.emit(str(exc))
+            if is_no_internet_error(exc):
+                self.finished_error.emit("No Internet")
+            else:
+                self.finished_error.emit(str(exc))
 
 
 class _PreviewThread(QThread):
@@ -70,7 +75,10 @@ class _PreviewThread(QThread):
             preview_path = youtube_service.download_preview(result.url, safe_name)
             self.finished_ok.emit(preview_path, result.url)
         except Exception as exc:
-            self.finished_error.emit(str(exc))
+            if is_no_internet_error(exc):
+                self.finished_error.emit("No Internet")
+            else:
+                self.finished_error.emit(str(exc))
 
 
 class _DownloadThread(QThread):
@@ -96,7 +104,10 @@ class _DownloadThread(QThread):
             )
             self.finished_ok.emit(path)
         except Exception as exc:
-            self.finished_error.emit(str(exc))
+            if is_no_internet_error(exc):
+                self.finished_error.emit("No Internet")
+            else:
+                self.finished_error.emit(str(exc))
 
 
 class RecommendationsPanel(QWidget):
@@ -256,4 +267,7 @@ class RecommendationsPanel(QWidget):
         self.status_label.setText(f"Error: {message}")
         self.preview_button.setEnabled(True)
         self.download_button.setEnabled(bool(self._current_video_url))
-        QMessageBox.warning(self, "Error", message)
+        # For "No Internet" we already show a short, clear message in the
+        # status label, so the extra popup dialog is just noise: skip it.
+        if message != "No Internet":
+            QMessageBox.warning(self, "Error", message)

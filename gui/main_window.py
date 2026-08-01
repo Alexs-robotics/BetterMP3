@@ -6,6 +6,7 @@ Main window. Ties together:
   - the album/track view (album_view.py)
   - playback controls (player_controls.py)
   - the recommendations panel (recommendations_panel.py)
+  - the manual search & download page (search_panel.py)
 """
 
 import os
@@ -28,6 +29,7 @@ from core.player import PlaybackEngine
 from gui.album_view import AlbumView
 from gui.player_controls import PlayerControls
 from gui.recommendations_panel import RecommendationsPanel
+from gui.search_panel import SearchWindow
 
 
 class MainWindow(QMainWindow):
@@ -38,6 +40,11 @@ class MainWindow(QMainWindow):
 
         self.engine = PlaybackEngine()
         self._current_playlist: list[str] = []
+
+        # Tenuta come attributo (non solo variabile locale) così la
+        # finestra non viene distrutta dal garbage collector non appena
+        # esce dallo scope del metodo che la apre.
+        self.search_window: SearchWindow | None = None
 
         self.album_view = AlbumView()
         self.player_controls = PlayerControls(self.engine)
@@ -58,6 +65,13 @@ class MainWindow(QMainWindow):
         self.choose_folder_button = QPushButton("Choose a different music folder...")
         self.choose_folder_button.clicked.connect(self._choose_folder)
 
+        self.search_button = QPushButton("Search & Download")
+        self.search_button.setToolTip(
+            "Search for any song or album online, preview it, and download "
+            "the single track or the entire album into your music folder."
+        )
+        self.search_button.clicked.connect(self._open_search_window)
+
         # -- Signal connections --
         self.album_view.play_album_requested.connect(self._play_album)
         self.album_view.track_selected.connect(self.recommendations_panel.refresh_for_track)
@@ -74,6 +88,7 @@ class MainWindow(QMainWindow):
         top_buttons.addWidget(self.rescan_button)
         top_buttons.addWidget(self.force_rescan_button)
         top_buttons.addWidget(self.choose_folder_button)
+        top_buttons.addWidget(self.search_button)
         main_layout.addLayout(top_buttons)
 
         splitter = QSplitter(Qt.Horizontal)
@@ -125,6 +140,18 @@ class MainWindow(QMainWindow):
 
         albums = database.albums_grouped()
         self.album_view.set_albums(self._music_folder, albums)
+
+    # -- Search & Download -------------------------------------------------
+    def _open_search_window(self) -> None:
+        if self.search_window is None:
+            self.search_window = SearchWindow(main_engine=self.engine, parent=self)
+            # Quando un download (singolo brano o album intero) va a buon
+            # fine, la libreria viene riscansionata automaticamente così
+            # il nuovo contenuto compare subito nella vista ad album.
+            self.search_window.library_changed.connect(self._rescan_library)
+        self.search_window.show()
+        self.search_window.raise_()
+        self.search_window.activateWindow()
 
     # -- Playback -------------------------------------------------
     def _play_album(self, paths: list[str], start_index: int) -> None:
