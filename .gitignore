@@ -16,6 +16,7 @@ dist/
 
 # --- Dati generati dall'app (non vanno versionati) ---
 library.db
+.spotify_token_cache
 downloads/
 preview_cache/
 dist/
