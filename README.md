@@ -71,6 +71,24 @@ active.
    python main.py
    ```
 
+
+### Spotify API Setup (Premium Only)
+
+If you have a Spotify Premium account, you can enable the **Sync Spotify Liked Songs** feature. This allows the app to read your "Liked Songs" directly from your Spotify library and download them via YouTube into your local music folder.
+
+To set this up:
+
+1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
+2. Log in with your Spotify Premium account and click **Create app**.
+3. Fill in the required details (App name, App description).
+4. For the **Redirect URI**, you **must** enter exactly: `http://127.0.0.1:8888/callback`
+5. Click **Save** to create the app.
+6. Open your new app's dashboard and go to **Settings**.
+7. Copy your **Client ID** and **Client Secret**.
+8. Open `core/config.py` in this project and paste your credentials into the `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` variables, or set them as environment variables on your system.
+
+**Note:** The first time you use the sync feature, a browser window will open asking you to log in to Spotify and authorize the app. A token will be cached locally (`.spotify_token_cache`) so you don't need to log in every time.
+
 ## Building the .exe
 
 Run `build_exe.bat` (from a Windows command prompt, after completing
@@ -97,15 +115,19 @@ mp3_player/
 │   ├── database.py                # SQLite library cache (grouped by folder)
 │   ├── library.py                 # Music folder scanning
 │   ├── metadata.py                # ID3 tag reading/writing (incl. track number)
+│   ├── net_errors.py              # error messages
 │   └── player.py                  # playback engine (python-vlc)
 ├── services/
 │   ├── lastfm_service.py          # similar tracks via Last.fm
 │   └── youtube_service.py         # search + preview + download via yt-dlp
+│   └── spotify_service.py         # find liked songs through spotify API + download via yt-dlp
 └── gui/
     ├── theme.py                   # black/purple Qt stylesheet
     ├── main_window.py             # main window, ties everything together
     ├── album_view.py              # folder/track list + reorder tracks
     ├── player_controls.py         # play/pause/skip/speed/seek
+    ├── search_panel.py            # search & download new songs
+    ├── spotify_panel.py           # sync spotify liked songs
     ├── track_editor_dialog.py     # track number edit dialog
     └── recommendations_panel.py   # recommendations panel + preview + download
 ```

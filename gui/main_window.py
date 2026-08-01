@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
         )
 
         # -- Creazione del Menù a Tendina --
-        self.menu_button = QPushButton("Gestione Libreria ▾")
+        self.menu_button = QPushButton("Library Management ▾")
         self.options_menu = QMenu(self.menu_button)
 
         # Azione: Rescan
@@ -75,7 +75,7 @@ class MainWindow(QMainWindow):
         self.options_menu.addSeparator()  # Separatore visivo
 
         # Azione: Cerca e Scarica
-        search_action = self.options_menu.addAction("Search & Download")
+        search_action = self.options_menu.addAction("Search Music - Download")
         search_action.setToolTip(
             "Search for any song or album online, preview it, and download "
             "the single track or the entire album into your music folder."
@@ -83,7 +83,7 @@ class MainWindow(QMainWindow):
         search_action.triggered.connect(self._open_search_window)
 
         # Azione: Sincronizza Spotify
-        spotify_action = self.options_menu.addAction("Sync Spotify Liked Songs")
+        spotify_action = self.options_menu.addAction("Sync Spotify Liked Songs - Premium Only")
         spotify_action.setToolTip(
             "Read your Spotify Liked Songs (read-only) and download them "
             "all via YouTube into your music folder."
